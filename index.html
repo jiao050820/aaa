@@ -100,7 +100,7 @@ button,select,input{
 <input id="betAmount" type="number" value="100">
 
 <button onclick="dealHand()">下注发牌</button>
-
+<button onclick="resetMoney()">重置资金</button>
 <div id="result">准备开始</div>
 <div id="cards">闲家：-<br>庄家：-</div>
 <div id="money">本金：$10000 | 盈利：$0</div>
@@ -494,6 +494,15 @@ function drawDerivedRoad(elementId,bigData,offset,styleType){
     }
 
     document.getElementById(elementId).innerHTML=html;
+}
+function resetMoney(){
+
+    balance = 10000;
+    startBalance = 10000;
+
+    updateStats();
+
+    alert("资金已重置为 $10000");
 }
 </script>
 
