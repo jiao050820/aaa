@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>北美百家乐模拟器</title>
+
+<style>
+body{
+    background:#7b5a2e;
+    color:white;
+    font-family:Arial,sans-serif;
+    padding:15px;
+}
+h1{margin:10px 0;}
+button,select,input{
+    font-size:18px;
+    padding:8px 12px;
+    margin:4px;
+}
+#result{
+    font-size:34px;
+    font-weight:bold;
+    margin:15px 0;
+}
+.panel{
+    background:#0f5132;
+    padding:15px;
+    border-radius:10px;
+    margin-bottom:15px;
+}
+.board{
+    background:white;
+    display:grid;
+    grid-template-rows:repeat(6,28px);
+    grid-auto-columns:28px;
+    grid-auto-flow:column;
+    gap:1px;
+    padding:4px;
+    overflow-x:auto;
+    border:2px solid #333;
+    margin-bottom:15px;
+}
+.cell{
+    width:28px;
+    height:28px;
+    border:1px solid #ccc;
+    box-sizing:border-box;
+    text-align:center;
+    line-height:26px;
+    font-size:14px;
+    font-weight:bold;
+    position:relative;
+}
+.circle{
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    margin:3px auto;
+    border:4px solid;
+    box-sizing:border-box;
+}
+.solid{
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    margin:3px auto;
+}
+.red{border-color:#d60000;color:#d60000;}
+.blue{border-color:#0074d9;color:#0074d9;}
+.green{border-color:#00aa44;color:#00aa44;}
+.redFill{background:#d60000;}
+.blueFill{background:#0074d9;}
+.greenFill{background:#00aa44;}
+.tieMark{
+    color:#00aa44;
+    font-size:22px;
+    position:absolute;
+    left:8px;
+    top:0px;
+    font-weight:bold;
+}
+.slashRed{color:#d60000;font-size:24px;}
+.slashBlue{color:#0074d9;font-size:24px;}
+</style>
+</head>
+
+<body>
+
+<h1>🎰 北美百家乐模拟器</h1>
+
+<div class="panel">
+<button onclick="newShoe()">新靴牌</button>
+
+<select id="betSide">
+    <option value="player">闲</option>
+    <option value="banker">庄</option>
+    <option value="tie">和</option>
+</select>
+
+<input id="betAmount" type="number" value="100">
+
+<button onclick="dealHand()">下注发牌</button>
+
+<div id="result">准备开始</div>
+<div id="cards">闲家：-<br>庄家：-</div>
+<div id="money">本金：$10000 | 盈利：$0</div>
+<div id="stats">闲赢：0 | 庄赢：0 | 和局：0 | 剩余牌数：0</div>
+</div>
+
+<h2>大路</h2>
+<div id="bigRoad" class="board"></div>
+
+<h2>珠盘路</h2>
+<div id="beadRoad" class="board"></div>
+
+<h2>大眼仔</h2>
+<div id="bigEyeRoad" class="board"></div>
+
+<h2>小路</h2>
+<div id="smallRoad" class="board"></div>
+
+<h2>曱甴路</h2>
+<div id="cockroachRoad" class="board"></div>
+
+<script>
+let shoe=[];
+let playerWins=0;
+let bankerWins=0;
+let ties=0;
+let balance=10000;
+let startBalance=10000;
+let history=[];
+
+function newShoe(){
+    shoe=[];
+    const suits=["♠","♥","♦","♣"];
+    const ranks=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+
+    for(let deck=0;deck<8;deck++){
+        for(let suit of suits){
+            for(let rank of ranks){
+                shoe.push(rank+suit);
+            }
+        }
+    }
+
+    shuffle(shoe);
+
+    playerWins=0;
+    bankerWins=0;
+    ties=0;
+    history=[];
+
+    document.getElementById("result").innerHTML="新靴牌已准备";
+    document.getElementById("cards").innerHTML="闲家：-<br>庄家：-";
+
+    updateStats();
+    updateRoads();
+
+    alert("8副牌新靴已洗好");
+}
+
+function shuffle(array){
+    for(let i=array.length-1;i>0;i--){
+        let j=Math.floor(Math.random()*(i+1));
+        [array[i],array[j]]=[array[j],array[i]];
+    }
+}
+
+function drawCard(){
+    return shoe.pop();
+}
+
+function cardValue(card){
+    let rank=card.slice(0,-1);
+    if(rank==="A") return 1;
+    if(rank==="10"||rank==="J"||rank==="Q"||rank==="K") return 0;
+    return parseInt(rank);
+}
+
+function total(cards){
+    let sum=0;
+    for(let card of cards){
+        sum+=cardValue(card);
+    }
+    return sum%10;
+}
+
+function bankerShouldDraw(bankerTotal, playerThirdValue){
+    if(bankerTotal<=2) return true;
+    if(bankerTotal===3) return playerThirdValue!==8;
+    if(bankerTotal===4) return [2,3,4,5,6,7].includes(playerThirdValue);
+    if(bankerTotal===5) return [4,5,6,7].includes(playerThirdValue);
+    if(bankerTotal===6) return [6,7].includes(playerThirdValue);
+    return false;
+}
+
+function dealHand(){
+    if(shoe.length<70){
+        alert("切牌位置已到，请开始新靴牌。");
+        return;
+    }
+
+    let betSide=document.getElementById("betSide").value;
+    let betAmount=parseFloat(document.getElementById("betAmount").value);
+
+    if(isNaN(betAmount)||betAmount<=0){
+        alert("请输入有效下注金额。");
+        return;
+    }
+
+    if(betAmount>balance){
+        alert("余额不足。");
+        return;
+    }
+
+    let player=[drawCard(),drawCard()];
+    let banker=[drawCard(),drawCard()];
+
+    let playerTotal=total(player);
+    let bankerTotal=total(banker);
+
+    if(playerTotal<8 && bankerTotal<8){
+        if(playerTotal<=5){
+            let playerThird=drawCard();
+            player.push(playerThird);
+            let thirdValue=cardValue(playerThird);
+            if(bankerShouldDraw(bankerTotal,thirdValue)){
+                banker.push(drawCard());
+            }
+        }else{
+            if(bankerTotal<=5){
+                banker.push(drawCard());
+            }
+        }
+    }
+
+    playerTotal=total(player);
+    bankerTotal=total(banker);
+
+    let winner="";
+    if(playerTotal>bankerTotal){
+        winner="player";
+        playerWins++;
+    }else if(bankerTotal>playerTotal){
+        winner="banker";
+        bankerWins++;
+    }else{
+        winner="tie";
+        ties++;
+    }
+
+    settleBet(betSide,betAmount,winner);
+    history.push(winner);
+
+    document.getElementById("cards").innerHTML=
+        "闲家："+player.join(" ")+" ("+playerTotal+")<br>"+
+        "庄家："+banker.join(" ")+" ("+bankerTotal+")";
+
+    document.getElementById("result").innerHTML=
+        winner==="player" ? "闲赢" :
+        winner==="banker" ? "庄赢" : "和局";
+
+    updateStats();
+    updateRoads();
+}
+
+function settleBet(betSide,betAmount,winner){
+    if(winner==="tie"){
+        if(betSide==="tie"){
+            balance+=betAmount*8;
+        }
+    }else{
+        if(betSide==="tie"){
+            balance-=betAmount;
+        }else if(betSide===winner){
+            balance+=winner==="banker" ? betAmount*0.95 : betAmount;
+        }else{
+            balance-=betAmount;
+        }
+    }
+}
+
+function updateStats(){
+    document.getElementById("stats").innerHTML=
+        "闲赢："+playerWins+
+        " | 庄赢："+bankerWins+
+        " | 和局："+ties+
+        " | 剩余牌数："+shoe.length;
+
+    document.getElementById("money").innerHTML=
+        "本金：$"+balance.toFixed(2)+
+        " | 盈利：$"+(balance-startBalance).toFixed(2);
+}
+
+function makeCircle(type){
+    if(type==="banker") return '<div class="circle red"></div>';
+    if(type==="player") return '<div class="circle blue"></div>';
+    return '<div class="circle green"></div>';
+}
+
+function makeSolid(type){
+    if(type==="banker") return '<div class="solid redFill"></div>';
+    if(type==="player") return '<div class="solid blueFill"></div>';
+    return '<div class="solid greenFill"></div>';
+}
+
+function updateRoads(){
+    drawBeadRoad();
+
+    let bigData=buildBigRoadData();
+
+    drawBigRoad(bigData);
+    drawDerivedRoad("bigEyeRoad", bigData, 1, "circle");
+    drawDerivedRoad("smallRoad", bigData, 2, "solid");
+    drawDerivedRoad("cockroachRoad", bigData, 3, "slash");
+}
+
+function drawBeadRoad(){
+    let rows=6;
+    let maxCol=Math.max(30,Math.ceil(history.length/rows)+3);
+    let html="";
+
+    for(let c=0;c<maxCol;c++){
+        for(let r=0;r<rows;r++){
+            let index=c*rows+r;
+            if(history[index]){
+                html+='<div class="cell">'+makeSolid(history[index])+'</div>';
+            }else{
+                html+='<div class="cell"></div>';
+            }
+        }
+    }
+
+    document.getElementById("beadRoad").innerHTML=html;
+}
+
+function buildBigRoadData(){
+    let rows=6;
+    let cells=[];
+    let col=0;
+    let row=0;
+    let lastMain=null;
+    let used={};
+
+    for(let r of history){
+        if(r==="tie"){
+            if(cells.length>0){
+                cells[cells.length-1].tie=true;
+            }
+            continue;
+        }
+
+        if(lastMain===null){
+            col=0;
+            row=0;
+        }else if(r===lastMain){
+            if(row<rows-1 && !used[col+","+(row+1)]){
+                row++;
+            }else{
+                col++;
+            }
+        }else{
+            col++;
+            row=0;
+        }
+
+        cells.push({
+            result:r,
+            row:row,
+            col:col,
+            tie:false
+        });
+
+        used[col+","+row]=true;
+        lastMain=r;
+    }
+
+    return cells;
+}
+
+function drawBigRoad(cells){
+    let rows=6;
+    let maxCol=Math.max(60, ...cells.map(x=>x.col+3));
+    let html="";
+
+    for(let c=0;c<maxCol;c++){
+        for(let r=0;r<rows;r++){
+            let item=cells.find(x=>x.col===c && x.row===r);
+            if(item){
+                let tieMark=item.tie ? '<span class="tieMark">/</span>' : '';
+                html+='<div class="cell">'+makeCircle(item.result)+tieMark+'</div>';
+            }else{
+                html+='<div class="cell"></div>';
+            }
+        }
+    }
+
+    document.getElementById("bigRoad").innerHTML=html;
+}
+
+function getColHeight(cells,col){
+    return cells.filter(x=>x.col===col).length;
+}
+
+function deriveColor(cells,currentCell,offset){
+    let c=currentCell.col;
+    let r=currentCell.row;
+
+    if(c-offset<0) return null;
+
+    if(r===0){
+        let h1=getColHeight(cells,c-1);
+        let h2=getColHeight(cells,c-1-offset);
+        return h1===h2 ? "banker" : "player";
+    }else{
+        let hasLeftSameRow=cells.some(x=>x.col===c-offset && x.row===r);
+        let hasLeftPrevRow=cells.some(x=>x.col===c-offset && x.row===r-1);
+        return hasLeftSameRow===hasLeftPrevRow ? "banker" : "player";
+    }
+}
+
+function buildDerivedRoadData(bigData,offset){
+    let raw=[];
+
+    for(let i=0;i<bigData.length;i++){
+        let color=deriveColor(bigData,bigData[i],offset);
+        if(color){
+            raw.push(color);
+        }
+    }
+
+    let rows=6;
+    let cells=[];
+    let col=0;
+    let row=0;
+    let last=null;
+    let used={};
+
+    for(let r of raw){
+        if(last===null){
+            col=0;
+            row=0;
+        }else if(r===last){
+            if(row<rows-1 && !used[col+","+(row+1)]){
+                row++;
+            }else{
+                col++;
+            }
+        }else{
+            col++;
+            row=0;
+        }
+
+        cells.push({
+            result:r,
+            row:row,
+            col:col
+        });
+
+        used[col+","+row]=true;
+        last=r;
+    }
+
+    return cells;
+}
+
+function drawDerivedRoad(elementId,bigData,offset,styleType){
+    let cells=buildDerivedRoadData(bigData,offset);
+    let rows=6;
+    let maxCol=Math.max(40,...cells.map(x=>x.col+3));
+    let html="";
+
+    for(let c=0;c<maxCol;c++){
+        for(let r=0;r<rows;r++){
+            let item=cells.find(x=>x.col===c && x.row===r);
+
+            if(item){
+                if(styleType==="circle"){
+                    html+='<div class="cell">'+makeCircle(item.result)+'</div>';
+                }else if(styleType==="solid"){
+                    html+='<div class="cell">'+makeSolid(item.result)+'</div>';
+                }else{
+                    html+='<div class="cell">'+
+                        (item.result==="banker"
+                            ? '<span class="slashRed">/</span>'
+                            : '<span class="slashBlue">/</span>')+
+                        '</div>';
+                }
+            }else{
+                html+='<div class="cell"></div>';
+            }
+        }
+    }
+
+    document.getElementById(elementId).innerHTML=html;
+}
+</script>
+
+</body>
+</html>
