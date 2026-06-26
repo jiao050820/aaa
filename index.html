@@ -12,6 +12,7 @@ body{
     padding:15px;
 }
 h1{margin:10px 0;}
+h2{margin:14px 0 8px;}
 button,select,input{
     font-size:18px;
     padding:8px 12px;
@@ -39,6 +40,9 @@ button,select,input{
     overflow-x:auto;
     border:2px solid #333;
     margin-bottom:15px;
+}
+.board3{
+    grid-template-rows:repeat(3,28px);
 }
 .cell{
     width:28px;
@@ -81,6 +85,17 @@ button,select,input{
 }
 .slashRed{color:#d60000;font-size:24px;}
 .slashBlue{color:#0074d9;font-size:24px;}
+
+@media(max-width:600px){
+    body{padding:10px;}
+    h1{font-size:24px;}
+    h2{font-size:22px;}
+    button,select,input{
+        font-size:16px;
+        padding:7px 10px;
+    }
+    #result{font-size:28px;}
+}
 </style>
 </head>
 
@@ -101,6 +116,7 @@ button,select,input{
 
 <button onclick="dealHand()">下注发牌</button>
 <button onclick="resetMoney()">重置资金</button>
+
 <div id="result">准备开始</div>
 <div id="cards">闲家：-<br>庄家：-</div>
 <div id="money">本金：$10000 | 盈利：$0</div>
@@ -112,6 +128,12 @@ button,select,input{
 
 <h2>珠盘路</h2>
 <div id="beadRoad" class="board"></div>
+
+<h2>珠盘路（偏移）</h2>
+<div id="beadRoadOffset" class="board"></div>
+
+<h2>三珠盘路</h2>
+<div id="beadRoad3" class="board board3"></div>
 
 <h2>大眼仔</h2>
 <div id="bigEyeRoad" class="board"></div>
@@ -307,6 +329,8 @@ function makeSolid(type){
 
 function updateRoads(){
     drawBeadRoad();
+    drawOffsetBeadRoad();
+    drawThreeBeadRoad();
 
     let bigData=buildBigRoadData();
 
@@ -324,15 +348,42 @@ function drawBeadRoad(){
     for(let c=0;c<maxCol;c++){
         for(let r=0;r<rows;r++){
             let index=c*rows+r;
-            if(history[index]){
-                html+='<div class="cell">'+makeSolid(history[index])+'</div>';
-            }else{
-                html+='<div class="cell"></div>';
-            }
+            html+='<div class="cell">'+(history[index] ? makeSolid(history[index]) : '')+'</div>';
         }
     }
 
     document.getElementById("beadRoad").innerHTML=html;
+}
+
+function drawOffsetBeadRoad(){
+    let rows=6;
+    let offset=3;
+    let maxCol=Math.max(30,Math.ceil((history.length+offset)/rows)+3);
+    let html="";
+
+    for(let c=0;c<maxCol;c++){
+        for(let r=0;r<rows;r++){
+            let index=c*rows+r-offset;
+            html+='<div class="cell">'+(history[index] ? makeSolid(history[index]) : '')+'</div>';
+        }
+    }
+
+    document.getElementById("beadRoadOffset").innerHTML=html;
+}
+
+function drawThreeBeadRoad(){
+    let rows=3;
+    let maxCol=Math.max(50,Math.ceil(history.length/rows)+3);
+    let html="";
+
+    for(let c=0;c<maxCol;c++){
+        for(let r=0;r<rows;r++){
+            let index=c*rows+r;
+            html+='<div class="cell">'+(history[index] ? makeSolid(history[index]) : '')+'</div>';
+        }
+    }
+
+    document.getElementById("beadRoad3").innerHTML=html;
 }
 
 function buildBigRoadData(){
@@ -495,15 +546,15 @@ function drawDerivedRoad(elementId,bigData,offset,styleType){
 
     document.getElementById(elementId).innerHTML=html;
 }
-function resetMoney(){
 
+function resetMoney(){
     balance = 10000;
     startBalance = 10000;
-
     updateStats();
-
     alert("资金已重置为 $10000");
 }
+
+newShoe();
 </script>
 
 </body>
