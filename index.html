@@ -44,6 +44,12 @@ button,select,input{
 .board3{
     grid-template-rows:repeat(3,28px);
 }
+.board4{
+    grid-template-rows:repeat(4,28px);
+}
+.board5{
+    grid-template-rows:repeat(5,28px);
+}
 .cell{
     width:28px;
     height:28px;
@@ -125,6 +131,12 @@ button,select,input{
 
 <h2>大路</h2>
 <div id="bigRoad" class="board"></div>
+    
+<h2>五珠盘路</h2>
+<div id="beadRoad5" class="board board5"></div>
+
+<h2>四珠盘路</h2>
+<div id="beadRoad4" class="board board4"></div>
 
 <h2>三珠盘路</h2>
 <div id="beadRoad3" class="board board3"></div>
@@ -328,9 +340,11 @@ function makeSolid(type){
 }
 
 function updateRoads(){
-    drawBeadRoad();
-    drawOffsetBeadRoad();
-    drawThreeBeadRoad();
+drawBeadRoad();
+drawOffsetBeadRoad();
+drawFiveBeadRoad();
+drawFourBeadRoad();
+drawThreeBeadRoad();
 
     let bigData=buildBigRoadData();
 
@@ -371,6 +385,48 @@ function drawOffsetBeadRoad(){
     document.getElementById("beadRoadOffset").innerHTML=html;
 }
 
+function drawFiveBeadRoad(){
+    let rows = 5;
+    let maxCol = Math.max(
+        32,
+        Math.ceil(history.length / rows) + 3
+    );
+
+    let html = "";
+
+    for(let c = 0; c < maxCol; c++){
+        for(let r = 0; r < rows; r++){
+            let index = c * rows + r;
+
+            html += '<div class="cell">' +
+                (history[index] ? makeSolid(history[index]) : '') +
+                '</div>';
+        }
+    }
+
+    document.getElementById("beadRoad5").innerHTML = html;
+}
+function drawFourBeadRoad(){
+    let rows = 4;
+    let maxCol = Math.max(
+        40,
+        Math.ceil(history.length / rows) + 3
+    );
+
+    let html = "";
+
+    for(let c = 0; c < maxCol; c++){
+        for(let r = 0; r < rows; r++){
+            let index = c * rows + r;
+
+            html += '<div class="cell">' +
+                (history[index] ? makeSolid(history[index]) : '') +
+                '</div>';
+        }
+    }
+
+    document.getElementById("beadRoad4").innerHTML = html;
+}
 function drawThreeBeadRoad(){
     let rows=3;
     let maxCol=Math.max(50,Math.ceil(history.length/rows)+3);
