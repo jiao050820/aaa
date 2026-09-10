@@ -134,6 +134,9 @@ button,select,input{
     
 <h2>四珠盘路</h2>
 <div id="beadRoad4" class="board board4"></div>
+
+<h2>四珠盘路（少第一手）</h2>
+<div id="beadRoad4Offset1" class="board board4"></div>
     
 <h2>五珠盘路</h2>
 <div id="beadRoad5" class="board board5"></div>
@@ -344,6 +347,7 @@ drawBeadRoad();
 drawOffsetBeadRoad();
 drawFiveBeadRoad();
 drawFourBeadRoad();
+drawFourBeadRoadOffset1();
 drawThreeBeadRoad();
 
     let bigData=buildBigRoadData();
@@ -405,6 +409,29 @@ function drawFiveBeadRoad(){
     }
 
     document.getElementById("beadRoad5").innerHTML = html;
+}
+function drawFourBeadRoadOffset1(){
+    let rows = 4;
+    let offset = 1;
+
+    let maxCol = Math.max(
+        40,
+        Math.ceil((history.length - offset) / rows) + 3
+    );
+
+    let html = "";
+
+    for(let c = 0; c < maxCol; c++){
+        for(let r = 0; r < rows; r++){
+            let index = c * rows + r + offset;
+
+            html += '<div class="cell">' +
+                (history[index] ? makeSolid(history[index]) : '') +
+                '</div>';
+        }
+    }
+
+    document.getElementById("beadRoad4Offset1").innerHTML = html;
 }
 function drawFourBeadRoad(){
     let rows = 4;
