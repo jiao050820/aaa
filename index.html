@@ -92,6 +92,71 @@ button,select,input{
 .slashRed{color:#d60000;font-size:24px;}
 .slashBlue{color:#0074d9;font-size:24px;}
 
+
+.panelBody{
+    display:grid;
+    grid-template-columns:minmax(360px,1fr) minmax(520px,1.25fr);
+    gap:30px;
+    align-items:center;
+}
+#nextRoadPreview{
+    min-height:180px;
+    padding:16px;
+    border:2px solid rgba(255,255,255,0.35);
+    border-radius:12px;
+    box-sizing:border-box;
+}
+.nextRoadTitle{
+    font-size:26px;
+    font-weight:bold;
+    margin-bottom:14px;
+}
+.nextRoadRow{
+    display:grid;
+    grid-template-columns:55px repeat(3,minmax(115px,1fr));
+    gap:10px;
+    align-items:center;
+    margin:10px 0;
+}
+.nextRoadSide{
+    font-size:25px;
+    font-weight:bold;
+    text-align:center;
+}
+.bankerSide{color:#ff5b5b;}
+.playerSide{color:#5bb5ff;}
+.nextRoadItem{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    min-height:42px;
+    padding:5px 10px;
+    background:rgba(255,255,255,0.12);
+    border-radius:7px;
+    box-sizing:border-box;
+}
+.nextRoadMark{
+    width:28px;
+    height:28px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.nextRoadMark .circle,
+.nextRoadMark .solid{
+    margin:4px auto;
+}
+.nextRoadNone{
+    color:#ddd;
+    font-size:22px;
+}
+@media(max-width:950px){
+    .panelBody{grid-template-columns:1fr;}
+    .nextRoadRow{
+        grid-template-columns:48px repeat(3,minmax(90px,1fr));
+    }
+}
+
 @media(max-width:600px){
     body{padding:10px;}
     h1{font-size:24px;}
@@ -123,10 +188,19 @@ button,select,input{
 <button onclick="dealHand()">下注发牌</button>
 <button onclick="resetMoney()">重置资金</button>
 
-<div id="result">准备开始</div>
-<div id="cards">闲家：-<br>庄家：-</div>
-<div id="money">本金：$10000 | 盈利：$0</div>
-<div id="stats">闲赢：0 | 庄赢：0 | 和局：0 | 剩余牌数：0</div>
+<div class="panelBody">
+    <div class="statusArea">
+        <div id="result">准备开始</div>
+        <div id="cards">闲家：-<br>庄家：-</div>
+        <div id="money">本金：$10000 | 盈利：$0</div>
+        <div id="stats">闲赢：0 | 庄赢：0 | 和局：0 | 剩余牌数：0</div>
+    </div>
+
+    <div id="nextRoadPreview">
+        <div class="nextRoadTitle">下一手下三路</div>
+        <div id="nextRoadRows"></div>
+    </div>
+</div>
 </div>
 
 <h2>大路</h2>
@@ -356,6 +430,7 @@ drawThreeBeadRoad();
     drawDerivedRoad("bigEyeRoad", bigData, 1, "circle");
     drawDerivedRoad("smallRoad", bigData, 2, "solid");
     drawDerivedRoad("cockroachRoad", bigData, 3, "slash");
+    updateNextRoadPreview();
 }
 
 function drawBeadRoad(){
@@ -469,7 +544,7 @@ function drawThreeBeadRoad(){
     document.getElementById("beadRoad3").innerHTML=html;
 }
 
-function buildBigRoadData(){
+function buildBigRoadData(sourceHistory=history){
     let rows=6;
     let cells=[];
     let col=0;
@@ -477,7 +552,7 @@ function buildBigRoadData(){
     let lastMain=null;
     let used={};
 
-    for(let r of history){
+    for(let r of sourceHistory){
         if(r==="tie"){
             if(cells.length>0){
                 cells[cells.length-1].tie=true;
@@ -628,6 +703,70 @@ function drawDerivedRoad(elementId,bigData,offset,styleType){
     }
 
     document.getElementById(elementId).innerHTML=html;
+}
+
+
+function predictNextDerivedColor(nextResult,offset){
+    const currentBigData=buildBigRoadData(history);
+    const currentDerived=buildDerivedRoadData(currentBigData,offset);
+
+    const testHistory=[...history,nextResult];
+    const testBigData=buildBigRoadData(testHistory);
+    const testDerived=buildDerivedRoadData(testBigData,offset);
+
+    if(testDerived.length<=currentDerived.length){
+        return null;
+    }
+
+    return testDerived[testDerived.length-1].result;
+}
+
+function makeNextRoadMark(color,type){
+    if(!color){
+        return '<span class="nextRoadNone">－</span>';
+    }
+
+    if(type==="bigEye"){
+        return makeCircle(color);
+    }
+
+    if(type==="small"){
+        return makeSolid(color);
+    }
+
+    return color==="banker"
+        ? '<span class="slashRed">/</span>'
+        : '<span class="slashBlue">/</span>';
+}
+
+function makeNextRoadRow(nextResult,label,sideClass){
+    const bigEye=predictNextDerivedColor(nextResult,1);
+    const small=predictNextDerivedColor(nextResult,2);
+    const cockroach=predictNextDerivedColor(nextResult,3);
+
+    return `
+        <div class="nextRoadRow">
+            <div class="nextRoadSide ${sideClass}">${label}</div>
+            <div class="nextRoadItem">
+                <span>大眼仔</span>
+                <span class="nextRoadMark">${makeNextRoadMark(bigEye,"bigEye")}</span>
+            </div>
+            <div class="nextRoadItem">
+                <span>小路</span>
+                <span class="nextRoadMark">${makeNextRoadMark(small,"small")}</span>
+            </div>
+            <div class="nextRoadItem">
+                <span>曱甴路</span>
+                <span class="nextRoadMark">${makeNextRoadMark(cockroach,"cockroach")}</span>
+            </div>
+        </div>
+    `;
+}
+
+function updateNextRoadPreview(){
+    document.getElementById("nextRoadRows").innerHTML=
+        makeNextRoadRow("banker","庄","bankerSide")+
+        makeNextRoadRow("player","闲","playerSide");
 }
 
 function resetMoney(){
