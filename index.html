@@ -620,9 +620,7 @@ function buildDerivedRoadData(bigData,offset){
 
     let rows=6;
     let cells=[];
-    let col=0;
-    row=0;
-    let last=null;
+    let col=0; let row=0; let last=null;
     let used={};
 
     for(let r of raw){
@@ -630,7 +628,7 @@ function buildDerivedRoadData(bigData,offset){
             col=0;
             row=0;
         }else if(r===last){
-            if(row<rows-1 && !used[col+","+(+row)]){
+            if(row<rows-1 && !used[col+","+(row+1)]){
                 row++;
             }else{
                 col++;
