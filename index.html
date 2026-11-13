@@ -136,6 +136,12 @@ button,select,input{
     color:#ddd;
     font-size:22px;
 }
+.quickBetButtons{
+    margin:4px 0 10px;
+}
+.quickBetButtons button{
+    min-width:64px;
+}
 
 @media(max-width:600px){
     body{padding:10px;}
@@ -163,10 +169,19 @@ button,select,input{
     <option value="tie">和</option>
 </select>
 
-<input id="betAmount" type="number" value="1">
+<input id="betAmount" type="number" value="0" min="0">
 
 <button onclick="dealHand()">下注发牌</button>
+<button onclick="flyHand()">飞牌</button>
 <button onclick="resetMoney()">重置资金</button>
+
+<div class="quickBetButtons">
+    <button type="button" onclick="setBetAmount(1000)">1K</button>
+    <button type="button" onclick="setBetAmount(2000)">2K</button>
+    <button type="button" onclick="setBetAmount(3000)">3K</button>
+    <button type="button" onclick="setBetAmount(4000)">4K</button>
+    <button type="button" onclick="setBetAmount(5000)">5K</button>
+</div>
 
 <div class="panelBody">
     <div class="statusArea">
@@ -285,23 +300,40 @@ function bankerShouldDraw(bankerTotal, playerThirdValue){
     return false;
 }
 
+function setBetAmount(amount){
+    document.getElementById("betAmount").value=amount;
+}
+
 function dealHand(){
+    playHand(true);
+}
+
+function flyHand(){
+    playHand(false);
+}
+
+function playHand(withBet){
     if(shoe.length<70){
         alert("切牌位置已到，请开始新靴牌。");
         return;
     }
 
-    let betSide=document.getElementById("betSide").value;
-    let betAmount=parseFloat(document.getElementById("betAmount").value);
+    let betSide=null;
+    let betAmount=0;
 
-    if(isNaN(betAmount)||betAmount<=0){
-        alert("请输入有效下注金额。");
-        return;
-    }
+    if(withBet){
+        betSide=document.getElementById("betSide").value;
+        betAmount=parseFloat(document.getElementById("betAmount").value);
 
-    if(betAmount>balance){
-        alert("余额不足。");
-        return;
+        if(isNaN(betAmount)||betAmount<=0){
+            alert("请输入有效下注金额。");
+            return;
+        }
+
+        if(betAmount>balance){
+            alert("余额不足。");
+            return;
+        }
     }
 
     let player=[drawCard(),drawCard()];
@@ -340,16 +372,21 @@ function dealHand(){
         ties++;
     }
 
-    settleBet(betSide,betAmount,winner);
+    if(withBet){
+        settleBet(betSide,betAmount,winner);
+    }
     history.push(winner);
 
     document.getElementById("cards").innerHTML=
         "闲家："+player.join(" ")+" ("+playerTotal+")<br>"+
         "庄家："+banker.join(" ")+" ("+bankerTotal+")";
 
-    document.getElementById("result").innerHTML=
+    let winnerText=
         winner==="player" ? "闲赢" :
         winner==="banker" ? "庄赢" : "和局";
+
+    document.getElementById("result").innerHTML=
+        withBet ? winnerText : "飞牌："+winnerText;
 
     updateStats();
     updateRoads();
@@ -620,7 +657,9 @@ function buildDerivedRoadData(bigData,offset){
 
     let rows=6;
     let cells=[];
-    let col=0; let row=0; let last=null;
+    let col=0;
+    let row=0;
+    let last=null;
     let used={};
 
     for(let r of raw){
