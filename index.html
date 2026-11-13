@@ -137,10 +137,17 @@ button,select,input{
     font-size:22px;
 }
 .quickBetButtons{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:4px;
     margin:4px 0 10px;
 }
 .quickBetButtons button{
     min-width:64px;
+}
+.quickBetButtons .flyButton{
+    min-width:180px;
 }
 
 @media(max-width:600px){
@@ -172,10 +179,10 @@ button,select,input{
 <input id="betAmount" type="number" value="0" min="0">
 
 <button onclick="dealHand()">下注发牌</button>
-<button onclick="flyHand()">飞牌</button>
 <button onclick="resetMoney()">重置资金</button>
 
 <div class="quickBetButtons">
+    <button type="button" class="flyButton" onclick="flyHand()">飞牌</button>
     <button type="button" onclick="setBetAmount(1000)">1K</button>
     <button type="button" onclick="setBetAmount(2000)">2K</button>
     <button type="button" onclick="setBetAmount(3000)">3K</button>
