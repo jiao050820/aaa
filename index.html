@@ -466,9 +466,9 @@ drawThreeBeadRoad();
     let bigData=buildBigRoadData();
 
     drawBigRoad(bigData);
-    drawDerivedRoad("bigEyeRoad", bigData, 1, "circle");
-    drawDerivedRoad("smallRoad", bigData, 2, "solid");
-    drawDerivedRoad("cockroachRoad", bigData, 3, "slash");
+    drawDerivedRoad("bigEyeRoad", history, 1, "circle");
+    drawDerivedRoad("smallRoad", history, 2, "solid");
+    drawDerivedRoad("cockroachRoad", history, 3, "slash");
     updateNextRoadPreview();
 }
 
@@ -586,6 +586,7 @@ function drawThreeBeadRoad(){
 function buildBigRoadData(sourceHistory=history){
     let rows=6;
     let cells=[];
+    let baseCol=-1;
     let col=0;
     let row=0;
     let lastMain=null;
@@ -599,18 +600,16 @@ function buildBigRoadData(sourceHistory=history){
             continue;
         }
 
-        if(lastMain===null){
-            col=0;
+        if(lastMain===null || r!==lastMain){
+            baseCol++;
+            col=baseCol;
             row=0;
-        }else if(r===lastMain){
+        }else{
             if(row<rows-1 && !used[col+","+(row+1)]){
                 row++;
             }else{
                 col++;
             }
-        }else{
-            col++;
-            row=0;
         }
 
         cells.push({
@@ -647,57 +646,78 @@ function drawBigRoad(cells){
     document.getElementById("bigRoad").innerHTML=html;
 }
 
-function getColHeight(cells,col){
-    return cells.filter(x=>x.col===col).length;
-}
-
-function deriveColor(cells,currentCell,offset){
-    let c=currentCell.col;
-    let r=currentCell.row;
-
-    if(c-offset<0) return null;
-
-    if(r===0){
-        let h1=getColHeight(cells,c-1);
-        let h2=getColHeight(cells,c-1-offset);
-        return h1===h2 ? "banker" : "player";
-    }else{
-        let hasLeftSameRow=cells.some(x=>x.col===c-offset && x.row===r);
-        let hasLeftPrevRow=cells.some(x=>x.col===c-offset && x.row===r-1);
-        return hasLeftSameRow===hasLeftPrevRow ? "banker" : "player";
-    }
-}
-
-function buildDerivedRoadData(bigData,offset){
+function buildDerivedRaw(sourceHistory,offset){
+    let runs=[];
     let raw=[];
 
-    for(let i=0;i<bigData.length;i++){
-        let color=deriveColor(bigData,bigData[i],offset);
-        if(color){
-            raw.push(color);
+    for(let result of sourceHistory){
+        if(result==="tie") continue;
+
+        let runIndex;
+        let position;
+
+        if(runs.length===0 || runs[runs.length-1].result!==result){
+            runs.push({result:result,length:1});
+            runIndex=runs.length-1;
+            position=1;
+        }else{
+            runIndex=runs.length-1;
+            runs[runIndex].length++;
+            position=runs[runIndex].length;
+        }
+
+        if(position===1){
+            let previousRun=runIndex-1;
+            let comparisonRun=previousRun-offset;
+
+            if(comparisonRun>=0){
+                raw.push(
+                    runs[previousRun].length===runs[comparisonRun].length
+                        ? "banker"
+                        : "player"
+                );
+            }
+        }else{
+            let comparisonRun=runIndex-offset;
+
+            if(comparisonRun>=0){
+                let comparisonHeight=runs[comparisonRun].length;
+                let hasSamePosition=comparisonHeight>=position;
+                let hasPreviousPosition=comparisonHeight>=position-1;
+
+                raw.push(
+                    hasSamePosition===hasPreviousPosition
+                        ? "banker"
+                        : "player"
+                );
+            }
         }
     }
 
+    return raw;
+}
+
+function buildDerivedRoadData(sourceHistory,offset){
+    let raw=buildDerivedRaw(sourceHistory,offset);
     let rows=6;
     let cells=[];
+    let baseCol=-1;
     let col=0;
     let row=0;
     let last=null;
     let used={};
 
     for(let r of raw){
-        if(last===null){
-            col=0;
+        if(last===null || r!==last){
+            baseCol++;
+            col=baseCol;
             row=0;
-        }else if(r===last){
+        }else{
             if(row<rows-1 && !used[col+","+(row+1)]){
                 row++;
             }else{
                 col++;
             }
-        }else{
-            col++;
-            row=0;
         }
 
         cells.push({
@@ -713,8 +733,8 @@ function buildDerivedRoadData(bigData,offset){
     return cells;
 }
 
-function drawDerivedRoad(elementId,bigData,offset,styleType){
-    let cells=buildDerivedRoadData(bigData,offset);
+function drawDerivedRoad(elementId,sourceHistory,offset,styleType){
+    let cells=buildDerivedRoadData(sourceHistory,offset);
     let rows=6;
     let maxCol=Math.max(40,...cells.map(x=>x.col+3));
     let html="";
@@ -746,18 +766,15 @@ function drawDerivedRoad(elementId,bigData,offset,styleType){
 
 
 function predictNextDerivedColor(nextResult,offset){
-    const currentBigData=buildBigRoadData(history);
-    const currentDerived=buildDerivedRoadData(currentBigData,offset);
-
     const testHistory=[...history,nextResult];
-    const testBigData=buildBigRoadData(testHistory);
-    const testDerived=buildDerivedRoadData(testBigData,offset);
+    const currentRaw=buildDerivedRaw(history,offset);
+    const testRaw=buildDerivedRaw(testHistory,offset);
 
-    if(testDerived.length<=currentDerived.length){
+    if(testRaw.length<=currentRaw.length){
         return null;
     }
 
-    return testDerived[testDerived.length-1].result;
+    return testRaw[testRaw.length-1];
 }
 
 function makeNextRoadMark(color,type){
